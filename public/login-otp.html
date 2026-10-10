@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login OTP - iCodeAutoResponder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f3f4f6; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; width: 100%; padding: 40px; }
+    .header { background: linear-gradient(to right, #2563eb, #4f46e5); color: white; padding: 30px; border-radius: 12px; margin: -40px -40px 30px -40px; text-align: center; }
+    .logo-text { font-size: 28px; font-weight: bold; margin-bottom: 8px; }
+    .logo-subtitle { font-size: 14px; opacity: 0.9; }
+    .input-group { margin-bottom: 20px; }
+    .input-group label { display: block; margin-bottom: 8px; color: #374151; font-weight: 600; font-size: 14px; }
+    .input-group input, .input-group select { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; transition: all 0.3s; }
+    .input-group input:focus, .input-group select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .input-group small { display: block; margin-top: 4px; color: #6b7280; font-size: 12px; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 14px; }
+    .btn-primary { background: linear-gradient(to right, #2563eb, #4f46e5); color: white; }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 2px solid #e5e7eb; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .link-login { text-align: center; margin-top: 20px; }
+    .link-login a { color: #2563eb; text-decoration: none; font-weight: 600; font-size: 14px; }
+    .link-login a:hover { text-decoration: underline; }
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: none; font-size: 14px; border-left: 4px solid; }
+    .alert.success { display: block; background: #ecfdf5; color: #065f46; border-left-color: #10b981; }
+    .alert.error { display: block; background: #fef2f2; color: #991b1b; border-left-color: #ef4444; }
+    .alert.info { display: block; background: #eff6ff; color: #1e40af; border-left-color: #3b82f6; }
+    .alert.warning { display: block; background: #fffbeb; color: #92400e; border-left-color: #f59e0b; }
+    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; }
+    .step { text-align: center; flex: 1; }
+    .step-num { width: 36px; height: 36px; margin: 0 auto 8px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .step.active .step-num { background: #2563eb; color: white; }
+    .step-label { font-size: 12px; color: #6b7280; }
+    .step.active .step-label { color: #2563eb; font-weight: 600; }
+    .form-group { display: none; }
+    .form-group.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .timer { text-align: center; color: #f59e0b; font-weight: 600; margin-top: 10px; font-size: 14px; }
+    .timer.expired { color: #ef4444; }
+    .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin: 20px 0; font-size: 13px; color: #1e40af; }
+    .info-box i { margin-right: 8px; }
+    .loading-spinner { text-align: center; }
+    .loading-spinner i { font-size: 48px; color: #2563eb; margin-bottom: 16px; }
+    .whatsapp-badge { display: inline-block; background: #25d366; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="header">
+      <div class="logo-text">iCodeAutoResponder</div>
+      <div class="logo-subtitle">Login dengan OTP WhatsApp</div>
+      <div class="whatsapp-badge">
+        <i class="fab fa-whatsapp"></i> Via WhatsApp
+      </div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="step-indicator">
+      <div class="step active" id="step-1">
+        <div class="step-num">1</div>
+        <div class="step-label">Nomor</div>
+      </div>
+      <div class="step" id="step-2">
+        <div class="step-num">2</div>
+        <div class="step-label">OTP</div>
+      </div>
+      <div class="step" id="step-3">
+        <div class="step-num">✓</div>
+        <div class="step-label">Selesai</div>
+      </div>
+    </div>
+
+    <!-- Step 1: Nomor Telepon -->
+    <form id="form-phone" class="form-group active" onsubmit="sendOTP(event)">
+      <div class="input-group">
+        <label><i class="fas fa-globe"></i> Pilih Negara</label>
+        <select id="country" required>
+          <option value="62">🇮🇩 Indonesia (+62)</option>
+          <option value="60">🇲🇾 Malaysia (+60)</option>
+          <option value="65">🇸🇬 Singapura (+65)</option>
+          <option value="1">🇺🇸 Amerika (+1)</option>
+          <option value="63">🇵🇭 Filipina (+63)</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-phone"></i> Nomor WhatsApp</label>
+        <input type="tel" id="phone" placeholder="8123456789" required>
+        <small>Contoh: 8123456789 (tanpa +62)</small>
+      </div>
+
+      <div class="info-box">
+        <i class="fas fa-info-circle"></i>
+        Kode OTP akan dikirim via WhatsApp dalam beberapa detik
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btn-send-otp" disabled>
+        <i class="fas fa-paper-plane"></i> Kirim Kode OTP
+      </button>
+
+      <div class="link-login">
+        <a href="/login"><i class="fas fa-arrow-left"></i> Kembali ke Login</a>
+      </div>
+    </form>
+
+    <!-- Step 2: Verifikasi OTP -->
+    <form id="form-otp" class="form-group" onsubmit="verifyOTP(event)">
+      <p class="text-center text-gray-600 text-sm mb-4">
+        Kode OTP telah dikirim ke WhatsApp Anda:<br>
+        <strong class="text-blue-600" id="phone-display"></strong>
+      </p>
+
+      <div class="info-box">
+        <i class="fab fa-whatsapp"></i>
+        Periksa pesan WhatsApp Anda untuk kode OTP 6 angka
+      </div>
+
+      <div class="input-group">
+        <label><i class="fas fa-lock"></i> Masukkan Kode OTP</label>
+        <input type="text" id="otp" placeholder="000000" maxlength="6" inputmode="numeric" required pattern="[0-9]{6}">
+      </div>
+
+      <div class="timer" id="timer-display"></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-verify-otp">
+        <i class="fas fa-check-circle"></i> Verifikasi & Login
+      </button>
+
+      <div style="text-align: center; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary" onclick="backToPhone()">
+          <i class="fas fa-arrow-left"></i> Ganti Nomor
+        </button>
+      </div>
+
+      <div class="link-login" style="margin-top: 12px;">
+        <small>Tidak menerima kode? <a href="#" onclick="resendOTP(event)">Kirim Ulang</a></small>
+      </div>
+    </form>
+
+    <!-- Step 3: Loading/Success -->
+    <div id="form-loading" class="form-group text-center">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p class="text-gray-600 mt-4">Memverifikasi login Anda...</p>
+        <p class="text-sm text-gray-500 mt-2">Tunggu sebentar, halaman akan dimuat</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentCountry = '62';
+    let currentPhone = '';
+    let otpTimer = null;
+    let otpTimeLeft = 300;
+    let maxResendTime = 0;
+
+    async function prioritizeDetectedCountry() {
+      try {
+        const response = await fetch('/api/country-preference');
+        const data = await response.json();
+        const country = document.getElementById('country');
+        const option = [...country.options].find(item => item.value === String(data.countryCode));
+        if (option) country.prepend(option);
+      } catch {}
+    }
+
+    prioritizeDetectedCountry();
+
+    function showAlert(msg, type = 'info') {
+      const alert = document.getElementById('alert');
+      alert.textContent = msg;
+      alert.className = `alert ${type}`;
+    }
+
+    function setStep(step) {
+      ['1', '2', '3'].forEach(s => {
+        document.getElementById(`step-${s}`).classList.toggle('active', s === step);
+      });
+
+      ['form-phone', 'form-otp', 'form-loading'].forEach((f) => {
+        const el = document.getElementById(f);
+        const shouldShow = (step === '1' && f === 'form-phone') || 
+                          (step === '2' && f === 'form-otp') || 
+                          (step === '3' && f === 'form-loading');
+        el.classList.toggle('active', shouldShow);
+      });
+    }
+
+    // Validasi nomor real-time
+    document.getElementById('phone').addEventListener('input', function() {
+      const isValid = this.value.length >= 8 && /^\d+$/.test(this.value);
+      document.getElementById('btn-send-otp').disabled = !isValid;
+    });
+
+    async function sendOTP(e) {
+      e.preventDefault();
+      
+      const country = document.getElementById('country').value;
+      const phone = document.getElementById('phone').value;
+      const btn = document.getElementById('btn-send-otp');
+
+      if (!phone || phone.length < 8) {
+        showAlert('Nomor telepon tidak valid (minimal 8 angka)', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim ke WhatsApp...';
+
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countryCode: country, number: phone })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          currentCountry = country;
+          currentPhone = data.phone;
+          document.getElementById('phone-display').textContent = `+${country} ${phone}`;
+          
+          setStep('2');
+          showAlert('✓ Kode OTP telah dikirim ke WhatsApp Anda!', 'success');
+          
+          maxResendTime = data.expiresIn || 300;
+          startOTPTimer(data.expiresIn || 300);
+        } else {
+          showAlert(data.message || 'Gagal mengirim OTP. Coba lagi.', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Kode OTP';
+        }
+      } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Kode OTP';
+      }
+    }
+
+    function startOTPTimer(totalSeconds) {
+      otpTimeLeft = totalSeconds;
+      const timerDisplay = document.getElementById('timer-display');
+      const resendBtn = document.querySelector('.link-login a[onclick*="resendOTP"]');
+
+      if (otpTimer) clearInterval(otpTimer);
+
+      otpTimer = setInterval(() => {
+        otpTimeLeft--;
+        
+        const minutes = Math.floor(otpTimeLeft / 60);
+        const seconds = otpTimeLeft % 60;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        timerDisplay.textContent = `⏱️ Kode berlaku dalam ${timeStr}`;
+        timerDisplay.classList.toggle('expired', otpTimeLeft < 30);
+
+        if (otpTimeLeft <= 0) {
+          clearInterval(otpTimer);
+          timerDisplay.textContent = '❌ Kode OTP telah kadaluarsa';
+          timerDisplay.classList.add('expired');
+          document.getElementById('btn-verify-otp').disabled = true;
+        }
+      }, 1000);
+    }
+
+    async function verifyOTP(e) {
+      e.preventDefault();
+
+      const country = document.getElementById('country').value;
+      const phone = document.getElementById('phone').value;
+      const otp = document.getElementById('otp').value;
+      const btn = document.getElementById('btn-verify-otp');
+
+      if (otp.length !== 6 || !/^\d+$/.test(otp)) {
+        showAlert('Kode OTP harus 6 angka', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifikasi...';
+
+      try {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countryCode: country, number: phone, otp })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          clearInterval(otpTimer);
+          setStep('3');
+          showAlert('✓ Login berhasil! Mengalihkan...', 'success');
+          
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          showAlert(data.message || 'Kode OTP salah atau kadaluarsa', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check-circle"></i> Verifikasi & Login';
+        }
+      } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i> Verifikasi & Login';
+      }
+    }
+
+    async function resendOTP(e) {
+      e.preventDefault();
+      
+      if (otpTimeLeft > 30) {
+        showAlert(`Tunggu ${Math.ceil(otpTimeLeft / 60)} menit sebelum mengirim ulang`, 'warning');
+        return;
+      }
+
+      const country = document.getElementById('country').value;
+      const phone = document.getElementById('phone').value;
+
+      try {
+        const res = await fetch('/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ countryCode: country, number: phone })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showAlert('✓ Kode OTP baru telah dikirim ke WhatsApp Anda!', 'success');
+          startOTPTimer(data.expiresIn || 300);
+          document.getElementById('otp').value = '';
+        } else {
+          showAlert(data.message || 'Gagal mengirim ulang OTP', 'error');
+        }
+      } catch (error) {
+        showAlert('Error: ' + error.message, 'error');
+      }
+    }
+
+    function backToPhone() {
+      if (otpTimer) clearInterval(otpTimer);
+      document.getElementById('phone').value = '';
+      document.getElementById('otp').value = '';
+      document.getElementById('country').value = '62';
+      document.getElementById('btn-send-otp').disabled = true;
+      setStep('1');
+      showAlert('', 'info');
+    }
+  </script>
+</body>
+</html>

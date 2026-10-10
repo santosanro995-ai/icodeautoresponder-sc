@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iCodeAutoResponder Pro</title>
+  <base href="/">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+   .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+   .green { background: #22c55e; }
+   .yellow { background: #facc15; }
+   .red { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity:.5; } }
+   .tab-active { color: #2563eb; border-bottom: 2px solid #2563eb; }
+  .verified-badge { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: #1683f7; color: white; font-size: 12px; font-weight: 700; line-height: 1; vertical-align: middle; }
+  .dark-mode { background:#111827; color:#e5e7eb; }
+  .dark-mode nav,.dark-mode footer,.dark-mode .bg-white { background:#1f2937 !important; color:#e5e7eb; }
+  .dark-mode .text-gray-500,.dark-mode .text-gray-600,.dark-mode .text-gray-700 { color:#cbd5e1 !important; }
+  .dark-mode input,.dark-mode textarea,.dark-mode select { background:#374151; color:#f9fafb; border-color:#4b5563; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <header class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex justify-between items-center sticky top-0 z-40">
+    <h1 class="text-2xl font-bold cursor-pointer" onclick="loadTab('dashboard', true)">iCodeAutoResponder</h1>
+    <div class="flex items-center gap-3">
+      <img id="user-avatar" class="w-10 h-10 rounded-full border-2 border-white">
+      <div>
+        <span id="user-name" class="font-semibold"></span>
+        <span id="user-plan" class="text-xs bg-green-500 px-2 py-0.5 rounded ml-2">Gratis</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="bg-white shadow p-4 flex gap-6 overflow-x-auto">
+    <a href="/dashboard" onclick="return navigateTab('dashboard', event)" id="tab-dashboard" class="font-semibold">Dasbor</a>
+    <a href="/custom" onclick="return navigateTab('custom', event)" id="tab-custom" class="font-semibold">Balasan Otomatis</a>
+    <a href="/preview" onclick="return navigateTab('preview', event)" id="tab-preview" class="font-semibold">Preview Chat</a>
+    <a href="/order" onclick="return navigateTab('order', event)" id="tab-order" class="font-semibold">Pesan Masuk</a>
+    <a href="/analytics" onclick="return navigateTab('analytics', event)" id="tab-analytics" class="font-semibold">Analytics</a>
+    <a href="/api" onclick="return navigateTab('api', event)" id="tab-api" class="font-semibold">API</a>
+    <a href="/billing" onclick="return navigateTab('billing', event)" id="tab-billing" class="font-semibold">Billing</a>
+    <a href="/account" onclick="return navigateTab('account', event)" id="tab-account" class="font-semibold">Akun</a>
+    <a href="/docs" onclick="return navigateTab('docs', event)" id="tab-docs" class="font-semibold">Dokumentasi</a>
+    <a href="/faq" onclick="return navigateTab('faq', event)" id="tab-faq" class="font-semibold">FAQ</a>
+    <a href="/bug" onclick="return navigateTab('bug', event)" id="tab-bug" class="font-semibold">Lapor Bug</a>
+    <a href="/logout" class="ml-auto bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Keluar</a>
+    <!--<button onclick="toggleDarkMode()" class="px-3 py-2 rounded border" title="Mode gelap">☾</button>-->
+  </nav>
+
+  <main class="p-6 max-w-7xl mx-auto" id="content">
+    <div class="text-center py-20">
+      <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+      <p class="mt-2">Memuat...</p>
+    </div>
+  </main>
+
+  <footer class="text-center p-4 mt-8 border-t text-gray-500 text-sm bg-white">
+    &copy; 2026 iCodeAutoResponder <span id="app-version-footer"></span> |
+    <a href="/faq" onclick="return navigateTab('faq', event)" class="text-blue-600 hover:underline">FAQ</a> |
+    <a href="/tos" onclick="return navigateTab('tos', event)" class="text-blue-600 hover:underline">TOS</a> |
+    <a href="/refund" onclick="return navigateTab('refund', event)" class="text-blue-600 hover:underline">Refund</a> |
+    <a href="/kontak" onclick="return navigateTab('kontak', event)" class="text-blue-600 hover:underline">Kontak</a>
+  </footer>
+
+  <div id="popup" class="hidden fixed top-5 right-5 text-white px-5 py-3 rounded-lg shadow-lg transition z-50">Notifikasi</div>
+
+  <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="modal-content" class="bg-white rounded-xl shadow-2xl p-6 w-11/12 max-w-md transform transition-all">
+      <h3 id="modal-title" class="text-lg font-bold mb-2"></h3>
+      <p id="modal-text" class="text-gray-600 mb-4"></p>
+      <div id="modal-buttons" class="flex justify-end gap-3"></div>
+    </div>
+  </div>
+
+  <script>
+    let repliesData = [];
+    let antiPromoData = { enabled: false, replyText: '', words: [] };
+    let botSettings = { welcomeEnabled: false, welcomeDelete: false, welcomeDeleteAfter: 10, welcomeText: 'Selamat datang, {@username}!', leaveEnabled: false, leaveText: 'Sampai jumpa, {@username}.', commandsEnabled: true, startBotText: 'Bot aktif dan siap digunakan.', jadibotEnabled: true, botToken: '', whitelistUser: false, whitelistNumbers: [], authorizedNumbers: [], scheduleEnabled: false, scheduleStart: '00:00', scheduleEnd: '00:00', newsEnabled: false, newsGroups: [], newsKeywords: ['viral', 'breaking', 'terkini', 'heboh', 'hype'], allowInvite: false, allowKick: false, botProviderDeviceId: 'device-1' };
+    let currentTab = 'dashboard';
+    let countriesData = [];
+    let ordersData = [];
+    let BASE_URL = '';
+    let APP_VERSION = '';
+    let APP_CHANGELOG = '';
+    let APP_USER = {};
+    let codeTimerInterval;
+    let isRequesting = false;
+    let CURRENT_BILLING = { plan: 'Gratis', sisaHari: 0, expired: 0 };
+    let selectedPlan = '';
+    let selectedAmount = 0;
+
+    function sortCountriesByPreference(countryCode) {
+      const preferred = String(countryCode);
+      countriesData.sort((first, second) => Number(second.code === preferred) - Number(first.code === preferred));
+    }
+
+    function showPopup(msg, type = 'success') {
+      const popup = document.getElementById('popup');
+      popup.innerText = msg;
+      popup.className = `fixed top-5 right-5 text-white px-5 py-3 rounded-lg shadow-lg transition z-50 ${type === 'success'? 'bg-green-500' : 'bg-red-500'}`;
+      popup.classList.remove('hidden');
+      setTimeout(() => popup.classList.add('hidden'), 4000);
+    }
+
+    function showModal({ title, text, buttons }) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-text').innerHTML = text;
+      const btnContainer = document.getElementById('modal-buttons');
+      btnContainer.innerHTML = '';
+      buttons.forEach(btn => {
+        const button = document.createElement('button');
+        button.innerText = btn.text;
+        button.className = `px-4 py-2 rounded-lg font-semibold ${btn.color}`;
+        button.onclick = () => { btn.action(); closeModal(); };
+        btnContainer.appendChild(button);
+      });
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+    }
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, { credentials: 'include',...options });
+      if (res.status === 403) throw await res.json();
+      if (res.status === 401) { window.location.href = '/login'; throw new Error('Belum login'); }
+      return res;
+    }
+
+    async function init() {
+      try {
+        if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark-mode');
+        const userRes = await apiFetch('/api/user');
+        const user = await userRes.json();
+        APP_USER = user.user;
+
+        document.getElementById('user-avatar').src = user.user.photos?.[0]?.value || user.user._json?.avatar_url || 'https://ui-avatars.com/api/?name=' + user.user.displayName;
+        document.getElementById('user-name').innerText = user.user.displayName;
+
+        const infoRes = await apiFetch('/api/info');
+        const info = await infoRes.json();
+        APP_VERSION = info.version || 'v2.8.5';
+        APP_CHANGELOG = info.changelog || 'Perbaikan bug';
+        CURRENT_BILLING = { plan: info.plan, sisaHari: info.sisaHari, expired: info.expired };
+        document.getElementById('app-version-footer').innerText = APP_VERSION;
+        document.getElementById('user-plan').innerText = info.plan;
+
+        const dataRes = await apiFetch('/api/data/dashboard');
+        const data = await dataRes.json();
+        countriesData = data.countries || [];
+        const countryPreferenceRes = await fetch('/api/country-preference');
+        const countryPreference = await countryPreferenceRes.json();
+        sortCountriesByPreference(countryPreference.countryCode);
+        BASE_URL = data.baseUrl || '';
+        repliesData = data.replies || repliesData;
+        antiPromoData = data.antiPromo || antiPromoData;
+        botSettings = data.botSettings || botSettings;
+        ordersData = data.orders || ordersData;
+
+        if (!localStorage.getItem('welcomed_' + APP_VERSION)) {
+          showModal({
+            title: `Selamat Datang, ${APP_USER.displayName} 👋`,
+            text: `<b>Versi: ${APP_VERSION}</b><br><br><b>Perubahan:</b><br>${APP_CHANGELOG}`,
+            buttons: [{ text: 'Mengerti', color: 'bg-blue-600 text-white hover:bg-blue-700', action: () => localStorage.setItem('welcomed_' + APP_VERSION, '1') }]
+          });
+        }
+
+        loadTab(getTabFromPath(), false);
+        setInterval(loadStatus, 3000);
+        loadStatus();
+      } catch (e) {
+        window.location.href = '/login';
+      }
+    }
+
+    async function openAdminTab(updateUrl = true) {
+      try {
+        await apiFetch('/api/admin/pending-payments');
+        loadTab('admin');
+      } catch (e) {
+        showModal({
+          title: '🔒 Masukkan Kode Admin',
+          text: `<input id="admin-code-input" type="password" placeholder="Masukkan Kode Admin dari.env" class="border p-2 rounded w-full">`,
+          buttons: [
+            { text: 'Batal', color: 'bg-gray-200 text-gray-800 hover:bg-gray-300', action: () => {} },
+            { text: 'Verifikasi', color: 'bg-red-600 text-white hover:bg-red-700', action: async () => {
+              const code = document.getElementById('admin-code-input').value;
+              const res = await fetch('/api/verify-admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+              const data = await res.json();
+              if (data.success) { showPopup('Akses Admin diberikan'); loadTab('admin', updateUrl); }
+              else { showPopup('Kode salah', 'error'); }
+            }}
+          ]
+        });
+      }
+    }
+
+    const TAB_PATHS = { dashboard: '/dashboard', custom: '/custom', preview: '/preview', order: '/order', analytics: '/analytics', api: '/api', billing: '/billing', account: '/account', docs: '/docs', faq: '/faq', bug: '/bug', tos: '/tos', refund: '/refund', kontak: '/kontak' };
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? '1' : '0'); }
+    function renderOrders(rows) { return rows.map((o, i) => `<tr class="border-b"><td class="p-2">${i + 1}</td><td class="p-2">${o.number}</td><td class="p-2">${o.message}</td><td class="p-2">${o.time}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center p-4">Belum ada pesan masuk</td></tr>'; }
+    function filterOrders() { const query = (document.getElementById('order-search')?.value || '').toLowerCase().trim(); const rows = ordersData.filter(order => `${order.number} ${order.message}`.toLowerCase().includes(query)); const body = document.getElementById('orders-body'); if (body) body.innerHTML = renderOrders(rows); }
+    async function appendHealthCenter() { const container = document.getElementById('content'); if (!container || currentTab !== 'account') return; try { const response = await apiFetch('/api/health'); const data = await response.json(); const connected = data.whatsapp?.connectedDevices || []; container.insertAdjacentHTML('beforeend', `<div class="bg-white p-5 rounded-xl shadow"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg">Health Center</h3><span class="text-xs px-2 py-1 rounded ${data.server?.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${data.server?.status || 'unknown'}</span></div><div class="grid md:grid-cols-3 gap-3 text-sm"><div class="border p-3 rounded"><span class="text-gray-500">Server uptime</span><b class="block mt-1">${data.server?.uptime || 0}s</b></div><div class="border p-3 rounded"><span class="text-gray-500">WhatsApp</span><b class="block mt-1">${data.whatsapp?.status || 'disconnected'}</b></div><div class="border p-3 rounded"><span class="text-gray-500">Perangkat aktif</span><b class="block mt-1">${connected.join(', ') || 'Tidak ada'}</b></div></div></div>`); } catch (error) { showPopup('Health Center tidak tersedia', 'error'); } }
+
+    function navigateTab(tab, event) { if (event) event.preventDefault(); loadTab(tab, true); return false; }
+    async function navigateAdmin(event) { if (event) event.preventDefault(); await openAdminTab(true); return false; }
+    function getTabFromPath() { const path = window.location.pathname.replace(/\/+$/, '') || '/'; const found = Object.entries(TAB_PATHS).find(([, value]) => value === path); return found? found[0] : 'dashboard'; }
+    window.addEventListener('popstate', () => { loadTab(getTabFromPath(), false); });
+
+    async function loadTab(tab, updateUrl = true) {
+      currentTab = tab;
+      if (updateUrl && TAB_PATHS[tab] && window.location.pathname!== TAB_PATHS[tab]) {
+        window.history.pushState({ tab }, '', TAB_PATHS[tab]);
+      }
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('tab-active'));
+      const tabEl = document.getElementById('tab-' + tab);
+      if (tabEl) tabEl.classList.add('tab-active');
+
+      if (!['docs','dashboard','billing','account','faq','tos','refund','kontak','admin','analytics','preview'].includes(tab)) {
+        const res = await apiFetch('/api/data/' + tab);
+        const data = await res.json();
+        repliesData = data.replies || [];
+        antiPromoData = data.antiPromo || antiPromoData;
+        botSettings = data.botSettings || botSettings;
+        ordersData = data.orders || [];
+      }
+
+      if (tab === 'dashboard') {
+        const sisaText = CURRENT_BILLING.plan!== 'Gratis' && CURRENT_BILLING.sisaHari > 0? `<span class="text-sm bg-green-100 text-green-800 px-2 py-1 rounded ml-2">Sisa ${CURRENT_BILLING.sisaHari} Hari</span>` : '';
+        document.getElementById('content').innerHTML = `
+          <div class="bg-white p-6 rounded-xl shadow mb-6">
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
+              <div><h2 class="font-bold text-xl">${APP_USER.displayName} <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">${APP_VERSION}</span></h2><p class="text-gray-500 text-sm">Paket: <b id="current-plan-dash">${CURRENT_BILLING.plan}</b> ${sisaText} | Terhubung ke: <b id="country-name">-</b> | Ping: <b id="ping-text">-ms</b></p></div>
+              <div class="flex items-center gap-2"><span id="status-dot" class="status-dot red"></span><span id="status-text" class="font-semibold">Memuat...</span></div>
+            </div>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow">
+            <h2 class="font-bold text-xl mb-4">Status WhatsApp</h2><div class="mb-4 flex flex-wrap gap-2 items-center"><label for="device-id" class="font-semibold">Perangkat:</label><input id="device-id" value="device-1" pattern="[A-Za-z0-9_\-]{1,40}" class="border p-2 rounded" placeholder="device-1"><button onclick="refreshDeviceStatus()" class="bg-gray-200 px-3 py-2 rounded">Cek Status</button></div><div id="devices-list" class="grid md:grid-cols-3 gap-2 mb-5"></div>
+            <div class="flex items-center justify-between mb-6 p-3 bg-gray-50 rounded-lg"><div class="flex items-center gap-2"><span id="status-dot-2" class="status-dot red"></span><span id="status-text-2" class="font-semibold">Memuat...</span></div><button onclick="confirmLogoutWA()" id="btn-logout-wa" class="hidden bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600">Putus Koneksi WA</button></div>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div class="border rounded-lg p-4"><h3 class="font-bold mb-3">1. Scan Kode QR</h3><div id="qr-box" class="hidden flex-col items-center"><img id="qr-img" class="w-48 h-48 border p-2 rounded"><p class="text-xs text-gray-500 mt-2">Buka WhatsApp > Perangkat Tertaut</p></div><div class="flex gap-3 mt-3"><button onclick="connectQR()" class="flex-1 bg-green-500 text-white px-5 py-2 rounded hover:bg-green-600">Buat QR Baru</button><button onclick="switchToCodeTab()" class="bg-blue-500 text-white px-5 py-2 rounded hover:bg-blue-600">Pakai Kode</button></div></div>
+              <div class="border rounded-lg p-4"><h3 class="font-bold mb-3">2. Gunakan Kode Pairing</h3><div id="code-display-box" class="hidden mb-3"><p class="text-sm text-gray-600 mb-2">Masukkan kode ini di WhatsApp dalam 20 detik</p><div class="bg-gray-100 p-4 rounded-lg border-2 border-dashed border-blue-300"><p id="code-text" class="text-3xl font-bold tracking-[0.4em] text-center text-blue-600 mb-2">---- ----</p><div class="flex gap-3"><button onclick="copyCode()" class="flex-1 bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">📋 Salin Kode</button><button onclick="switchToQRTab()" class="bg-gray-500 text-white px-3 py-2 rounded text-sm hover:bg-gray-600">Pakai QR</button></div><p id="code-timer" class="text-xs text-red-500 text-center mt-2"></p></div></div><div id="number-input-box" class="mt-4"><div class="flex gap-2"><select id="country" class="border p-2 rounded w-1/3">${countriesData.map(c => `<option value="${c.code}">+${c.code}</option>`).join('')}</select><input id="number" placeholder="8123456789" class="border p-2 rounded flex-1"></div><button onclick="connectNumber()" class="w-full bg-indigo-600 text-white px-4 py-2 rounded mt-2 hover:bg-indigo-700">Dapatkan Kode</button></div></div>
+            </div>
+          </div>`;
+        loadStatus();
+      }
+
+      if (tab === 'custom') {
+        document.getElementById('content').innerHTML = `
+          <div class="bg-white p-5 rounded-xl shadow mb-6"><h2 class="font-bold text-lg mb-4">Template Pesan Siap Pakai</h2><div class="grid md:grid-cols-3 gap-3">${[{name:'Toko Online',trigger:'status pesanan',response:'Halo, pesanan Anda sedang kami proses. Kami akan mengirim nomor resi setelah paket dikirim.'},{name:'Customer Service',trigger:'jam operasional',response:'Layanan kami buka Senin-Jumat pukul 08.00-17.00 WIB.'},{name:'Seminar',trigger:'konfirmasi daftar',response:'Pendaftaran Anda sudah kami terima. Detail acara akan dikirim melalui WhatsApp.'}].map(template => `<button onclick="useTemplate(${JSON.stringify(template).replaceAll('"','&quot;')})" class="border p-3 rounded text-left hover:border-blue-500"><b>${template.name}</b><span class="block text-sm text-gray-500 mt-1">${template.trigger}</span></button>`).join('')}</div></div>
+          <div class="bg-white p-5 rounded-xl shadow mb-6"><h2 class="font-bold text-lg mb-4">Anti-Promosi Grup WhatsApp</h2><form onsubmit="saveAntiPromo(event)" class="space-y-3"><label class="flex items-center gap-2"><input id="anti-promo-enabled" type="checkbox" class="w-4 h-4" ${antiPromoData.enabled ? 'checked' : ''}><span>Aktifkan hapus otomatis di grup</span></label><textarea id="anti-promo-reply" rows="3" class="border p-2 rounded w-full" placeholder="Teks balasan setelah pesan dihapus">${antiPromoData.replyText || ''}</textarea><input id="anti-promo-words" class="border p-2 rounded w-full" value="${(antiPromoData.words || []).join(', ')}" placeholder="Kata tambahan, pisahkan dengan koma"><button class="bg-red-600 text-white px-4 py-2 rounded">Simpan Pengaturan</button></form><p class="text-xs text-gray-500 mt-3">Deteksi bawaan mencakup URL dan kata seperti promo, jual, diskon, reseller, dan investasi. Bot harus admin grup agar dapat menghapus pesan.</p></div>
+          <div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-4">Balasan Otomatis</h2><form onsubmit="addReply(event)" class="flex gap-2 mb-4"><input id="trigger" placeholder="Kata kunci: halo" class="border p-2 rounded flex-1" required><input id="response" placeholder="Balasan: Halo juga" class="border p-2 rounded flex-1" required><button class="bg-blue-600 text-white px-4 py-2 rounded">Tambah</button></form><table class="w-full text-left"><thead><tr class="border-b"><th class="p-2">Kata Kunci</th><th class="p-2">Balasan</th><th class="p-2">Aksi</th></tr></thead><tbody>${repliesData.map((r, i) => `<tr class="border-b"><td class="p-2">${r.trigger}</td><td class="p-2">${r.response}</td><td class="p-2"><button onclick="deleteReply(${i})" class="text-red-500">Hapus</button></td></tr>`).join('') || '<tr><td colspan=3 class="text-center p-4">Belum ada data</td></tr>'}</tbody></table></div>`;
+        document.getElementById('content').insertAdjacentHTML('afterbegin', `<div class="bg-white p-5 rounded-xl shadow mb-6"><div class="flex flex-wrap items-start justify-between gap-3 mb-4"><div><h2 class="font-bold text-lg">Bot WhatsApp</h2><p class="text-sm text-gray-500">Atur event anggota grup dan command bot dari satu tempat.</p></div><span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Subkategori bot</span></div><form onsubmit="saveBotSettings(event)" class="space-y-4"><div class="grid md:grid-cols-2 gap-4"><div class="border rounded-lg p-4 space-y-3"><label class="flex items-center gap-2 font-semibold"><input id="bot-welcome-enabled" type="checkbox" class="w-4 h-4" ${botSettings.welcomeEnabled ? 'checked' : ''}> Deteksi anggota masuk</label><label class="block text-sm">Pesan welcome<textarea id="bot-welcome-text" rows="3" class="border p-2 rounded w-full mt-1" placeholder="Selamat datang, {@username}!">${botSettings.welcomeText || ''}</textarea></label><label class="flex items-center gap-2 text-sm"><input id="bot-welcome-delete" type="checkbox" class="w-4 h-4" ${botSettings.welcomeDelete ? 'checked' : ''}> Hapus pesan welcome otomatis</label><label class="block text-sm">Hapus setelah (detik)<input id="bot-welcome-delete-after" type="number" min="1" max="3600" value="${botSettings.welcomeDeleteAfter || 10}" class="border p-2 rounded w-full mt-1"></label></div><div class="border rounded-lg p-4 space-y-3"><label class="flex items-center gap-2 font-semibold"><input id="bot-leave-enabled" type="checkbox" class="w-4 h-4" ${botSettings.leaveEnabled ? 'checked' : ''}> Deteksi anggota keluar</label><label class="block text-sm">Pesan leave<textarea id="bot-leave-text" rows="3" class="border p-2 rounded w-full mt-1" placeholder="Sampai jumpa, {@username}.">${botSettings.leaveText || ''}</textarea></label><p class="text-xs text-gray-500">Gunakan <code>{@username}</code> untuk mention anggota yang masuk atau keluar.</p></div></div><div class="border rounded-lg p-4 space-y-3"><label class="flex items-center gap-2 font-semibold"><input id="bot-commands-enabled" type="checkbox" class="w-4 h-4" ${botSettings.commandsEnabled !== false ? 'checked' : ''}> Aktifkan command bot</label><label class="flex items-center gap-2 text-sm"><input id="bot-jadibot-enabled" type="checkbox" class="w-4 h-4" ${botSettings.jadibotEnabled !== false ? 'checked' : ''}> Izinkan /jadibot</label><label class="block text-sm">Balasan /start-bot<textarea id="bot-start-text" rows="2" class="border p-2 rounded w-full mt-1" placeholder="Bot aktif dan siap digunakan.">${botSettings.startBotText || ''}</textarea></label><div class="flex flex-wrap gap-2 items-center"><input id="bot-token" readonly value="${botSettings.botToken || 'Belum dibuat'}" class="border p-2 rounded flex-1 font-mono text-sm"><button type="button" onclick="generateBotToken()" class="bg-gray-800 text-white px-3 py-2 rounded">Generate token</button></div><p class="text-xs text-gray-500">Token ini dipakai bersama command <code>/jadibot TOKEN</code>. Token Telegram resmi tetap dibuat melalui BotFather.</p></div><button class="bg-blue-600 text-white px-4 py-2 rounded">Simpan Bot WhatsApp</button></form></div>`);
+      }
+
+        if (tab === 'custom') { document.getElementById('content').insertAdjacentHTML('afterbegin', `<div class="bg-white p-5 rounded-xl shadow mb-6 border-l-4 border-amber-500"><h2 class="font-bold text-lg mb-2">Whitelist Pengguna Bot</h2><label class="flex items-center gap-2 font-semibold"><input id="bot-whitelist-user" type="checkbox" class="w-4 h-4" ${botSettings.whitelistUser ? 'checked' : ''}> Izinkan bot berjalan untuk pengguna whitelist</label><input id="bot-whitelist-numbers" value="${(botSettings.whitelistNumbers || []).join(', ')}" class="border p-2 rounded w-full mt-3" placeholder="Nomor whitelist, pisahkan dengan koma: 628123456789"><p class="text-xs text-gray-500 mt-2">Wajib dicentang. Admin grup tetap tidak dapat memakai bot jika tidak masuk whitelist.</p><button type="button" onclick="saveBotWhitelist()" class="bg-amber-600 text-white px-4 py-2 rounded mt-3">Simpan Whitelist</button></div>`); document.getElementById('content').insertAdjacentHTML('beforeend', `<div class="bg-white p-5 rounded-xl shadow mb-6"><h2 class="font-bold text-lg mb-3">Filter Link dan Kata Tidak Senonoh</h2><label class="flex items-center gap-2"><input id="bot-obscene-enabled" type="checkbox" class="w-4 h-4" ${antiPromoData.obsceneEnabled ? 'checked' : ''}> Hapus otomatis link dan kata terlarang</label><input id="bot-obscene-words" value="${(antiPromoData.obsceneWords || []).join(', ')}" class="border p-2 rounded w-full mt-3" placeholder="Kata tambahan, pisahkan dengan koma"><textarea id="bot-obscene-reply" rows="2" class="border p-2 rounded w-full mt-3" placeholder="Pesan setelah dihapus">${antiPromoData.obsceneReply || ''}</textarea><button type="button" onclick="saveUnsafeFilter()" class="bg-red-600 text-white px-4 py-2 rounded mt-3">Simpan Filter</button></div><div class="bg-white p-5 rounded-xl shadow mb-6"><h2 class="font-bold text-lg mb-3">Jadwal Bot dan Berita Hype</h2><div class="grid md:grid-cols-3 gap-3"><label class="text-sm">Aktif dari<input id="bot-schedule-start" type="time" value="${botSettings.scheduleStart || '00:00'}" class="border p-2 rounded w-full mt-1"></label><label class="text-sm">Aktif sampai<input id="bot-schedule-end" type="time" value="${botSettings.scheduleEnd || '00:00'}" class="border p-2 rounded w-full mt-1"></label><label class="flex items-center gap-2 text-sm mt-6"><input id="bot-schedule-enabled" type="checkbox" class="w-4 h-4" ${botSettings.scheduleEnabled ? 'checked' : ''}> Aktifkan jadwal</label></div><label class="flex items-center gap-2 mt-3"><input id="bot-news-enabled" type="checkbox" class="w-4 h-4" ${botSettings.newsEnabled ? 'checked' : ''}> Deteksi berita hype dan kirim ke grup</label><input id="bot-news-keywords" value="${(botSettings.newsKeywords || []).join(', ')}" class="border p-2 rounded w-full mt-3" placeholder="Kata hype: viral, breaking, heboh"><div id="bot-news-groups" class="space-y-2 mt-3"><p class="text-sm text-gray-500">Memuat daftar grup...</p></div><p class="text-xs text-gray-500 mt-2">Sumber berita dikonfigurasi server melalui NEWS_FEED_URL.</p><button type="button" onclick="saveBotAutomation()" class="bg-blue-600 text-white px-4 py-2 rounded mt-3">Simpan Otomasi</button></div>`); loadNewsGroups(); }
+
+      if (tab === 'preview') {
+        document.getElementById('content').innerHTML = `
+          <div class="bg-white p-5 rounded-xl shadow">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><h2 class="font-bold text-xl">Preview Chat</h2><p class="text-sm text-gray-500 mt-1">Simulasikan pesan grup berdasarkan konfigurasi anti-promosi dan auto-reply aktif.</p></div><span class="px-3 py-1 rounded-full text-sm ${antiPromoData.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">Anti-promosi: ${antiPromoData.enabled ? 'Aktif' : 'Nonaktif'}</span></div>
+            <div class="grid lg:grid-cols-[260px_1fr] gap-5">
+              <div class="border rounded-lg p-4 space-y-3"><label class="block text-sm font-semibold">Simulasi sebagai</label><select id="preview-role" class="border p-2 rounded w-full"><option value="member">Anggota biasa</option><option value="admin">Admin grup</option><option value="whitelist">User whitelist</option></select><label class="block text-sm font-semibold">Nama pengirim</label><input id="preview-sender" value="Budi" class="border p-2 rounded w-full"><label class="block text-sm font-semibold">Pesan</label><textarea id="preview-message" rows="5" class="border p-2 rounded w-full" placeholder="Contoh: Promo https://contoh.com">Promo https://contoh.com</textarea><button onclick="runChatPreview()" class="w-full bg-blue-600 text-white px-4 py-2 rounded">Simulasikan Pesan</button><div class="border-t pt-3 text-xs text-gray-500"><p><b>Aturan aktif:</b></p><p>Link mencurigakan: ${antiPromoData.enabled ? 'terdeteksi' : 'tidak diproses karena nonaktif'}</p><p>Kata tambahan: ${(antiPromoData.words || []).join(', ') || 'tidak ada'}</p></div></div>
+              <div class="rounded-lg bg-slate-100 p-4 min-h-[420px] flex flex-col"><div class="text-center text-xs text-gray-500 mb-3">Preview grup WhatsApp</div><div id="preview-log" class="space-y-3 flex-1"><div class="text-center text-sm text-gray-500 py-16">Kirim pesan simulasi untuk melihat hasilnya.</div></div></div>
+            </div>
+          </div>`;
+      }
+
+      if (tab === 'order') {
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><div class="flex flex-wrap justify-between gap-3 mb-4"><div><h2 class="font-bold text-lg">Data Pesan Masuk</h2><p class="text-xs text-gray-500">Cari berdasarkan nomor atau isi pesan.</p></div><div class="flex gap-2"><input id="order-search" oninput="filterOrders()" placeholder="Cari pesan..." class="border p-2 rounded"><a href="/api/export/messages?format=csv" class="bg-green-600 text-white px-3 py-2 rounded">CSV</a><a href="/api/export/messages?format=xlsx" class="bg-blue-600 text-white px-3 py-2 rounded">Excel</a></div></div><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b"><th class="p-2">No</th><th class="p-2">Nomor</th><th class="p-2">Pesan</th><th class="p-2">Waktu</th></tr></thead><tbody id="orders-body">${renderOrders(ordersData)}</tbody></table></div></div>`;
+      }
+
+      if (tab === 'analytics') {
+        const res = await apiFetch('/api/analytics'); const analytics = await res.json();
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><div class="flex flex-wrap justify-between gap-3 mb-6"><h2 class="font-bold text-xl">Analisis Bisnis</h2><div class="flex gap-2"><a href="/api/export/messages?format=xlsx" class="bg-blue-600 text-white px-3 py-2 rounded">Export Pesan</a><a href="/api/export/contacts?format=csv" class="bg-green-600 text-white px-3 py-2 rounded">Export Kontak</a><a href="/api/export/transactions?format=xlsx" class="bg-indigo-600 text-white px-3 py-2 rounded">Export Transaksi</a></div></div><div class="grid md:grid-cols-3 gap-4 mb-6"><div class="border p-4 rounded"><p class="text-gray-500">Total pesan</p><b class="text-2xl">${analytics.messages}</b></div><div class="border p-4 rounded"><p class="text-gray-500">Rata-rata respons</p><b class="text-2xl">${(analytics.responseTime.averageMs / 1000).toFixed(1)}s</b></div><div class="border p-4 rounded"><p class="text-gray-500">Data respons</p><b class="text-2xl">${analytics.responseTime.count}</b></div></div><h3 class="font-bold mb-3">Kata kunci terpopuler</h3><div class="space-y-2">${analytics.keywords.map(item => `<div class="flex items-center gap-3"><span class="w-32 truncate">${item.keyword}</span><div class="h-3 bg-blue-500 rounded" style="width:${Math.min(100, item.count * 8)}%"></div><b>${item.count}</b></div>`).join('') || '<p class="text-gray-500">Belum ada data</p>'}</div></div>`;
+      }
+
+      if (tab === 'affiliate') {
+        const res = await apiFetch('/api/affiliate'); const affiliate = await res.json();
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-xl mb-3">Program Afiliasi</h2><p class="text-gray-600 mb-4">Bagikan link referral. Komisi saat referral melakukan pembayaran paket.</p><div class="border p-4 rounded mb-4"><p class="text-sm text-gray-500">Link referral</p><div class="flex gap-2 mt-2"><input id="referral-url" readonly value="${affiliate.referralUrl || '-'}" class="border p-2 rounded flex-1"><button onclick="navigator.clipboard.writeText(document.getElementById('referral-url').value); showPopup('Link disalin')" class="bg-blue-600 text-white px-3 rounded">Salin</button></div></div><p>Total komisi: <b>Rp ${(affiliate.commission || 0).toLocaleString('id-ID')}</b></p><p>Referral berhasil: <b>${(affiliate.referrals || []).length}</b></p></div>`;
+      }
+
+      if (tab === 'account') {
+        const res = await apiFetch('/api/account/stats'); const data = await res.json(); const stats = data.stats || {}; const cards = [{ label: 'Pemakaian API Key', value: stats.apiCalls || 0, color: 'blue', suffix: ' kali' }, { label: 'Pesan Gagal ke Customer', value: `${stats.failedRate || 0}%`, color: 'red', suffix: '' }, { label: 'Pesan Berhasil ke Customer', value: `${stats.successRate || 0}%`, color: 'green', suffix: '' }];
+        document.getElementById('content').innerHTML = `<div class="space-y-6"><div class="bg-white p-5 rounded-xl shadow"><div class="flex flex-wrap justify-between gap-3 items-start"><div><h2 class="font-bold text-xl">Akun & Statistik</h2><p class="text-sm text-gray-500 mt-1">Ringkasan penggunaan API key dan pengiriman pesan akun Anda.</p></div><button onclick="loadTab('account', false)" class="border px-3 py-2 rounded">Refresh</button></div><div class="grid md:grid-cols-3 gap-4 mt-6">${cards.map(card => `<div class="border-l-4 border-${card.color}-500 bg-${card.color}-50 p-5 rounded-lg"><p class="text-sm text-gray-600">${card.label}</p><p class="text-3xl font-bold text-${card.color}-700 mt-2">${card.value}${card.suffix}</p></div>`).join('')}</div><div class="mt-5 border-t pt-5"><p class="text-gray-500 text-sm">Total pesan terkirim</p><p class="text-4xl font-bold mt-1">${stats.totalSent || 0}</p><p class="text-sm text-gray-500 mt-2">Total percobaan pengiriman: ${stats.totalAttempts || 0} | Gagal: ${stats.failed || 0}</p></div></div><div class="bg-white p-5 rounded-xl shadow"><h3 class="font-bold text-lg mb-3">API Key Terdaftar</h3><div class="space-y-2">${(data.apiKeys || []).map(item => `<div class="flex justify-between items-center border p-3 rounded"><code>${item.masked}</code><span class="text-xs text-green-600">Aktif</span></div>`).join('') || '<p class="text-gray-500">Belum ada API key.</p>'}</div></div></div>`; appendHealthCenter();
+      }
+
+      if (tab === 'api') {
+        document.getElementById('content').innerHTML = `<div class="space-y-6"><div class="bg-white p-5 rounded-xl shadow"><div class="flex flex-wrap justify-between gap-3 items-start"><div><h2 class="font-bold text-xl">API Key & Integrasi</h2><p class="text-sm text-gray-500 mt-1">Gunakan API key untuk mengirim pesan WhatsApp dari aplikasi eksternal.</p></div><button onclick="generateApiKey()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">+ Buat API Key</button></div><div class="grid md:grid-cols-3 gap-3 mt-5"><div class="border p-3 rounded"><p class="text-xs text-gray-500">Header autentikasi</p><code class="text-sm">x-api-key: wa_xxx</code></div><div class="border p-3 rounded"><p class="text-xs text-gray-500">Base URL</p><code class="text-sm break-all">${BASE_URL}/v1</code></div><div class="border p-3 rounded"><p class="text-xs text-gray-500">Response</p><code class="text-sm">JSON + success</code></div></div><div id="api-keys-list" class="space-y-2 mt-5"></div></div><div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-4">Endpoint Tersedia</h2><div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Method</th><th class="p-2">Endpoint</th><th class="p-2">Fungsi</th><th class="p-2">Body</th></tr></thead><tbody><tr class="border-b"><td class="p-2"><span class="text-green-700 font-bold">POST</span></td><td class="p-2"><code>/v1/send-message</code></td><td class="p-2">Kirim satu pesan</td><td class="p-2"><code>number, message, deviceId?</code></td></tr><tr class="border-b"><td class="p-2"><span class="text-green-700 font-bold">POST</span></td><td class="p-2"><code>/v1/send-batch</code></td><td class="p-2">Kirim maksimal 100 pesan</td><td class="p-2"><code>messages[]</code></td></tr><tr class="border-b"><td class="p-2"><span class="text-blue-700 font-bold">GET</span></td><td class="p-2"><code>/v1/status</code></td><td class="p-2">Status WhatsApp dan perangkat</td><td class="p-2">-</td></tr><tr class="border-b"><td class="p-2"><span class="text-blue-700 font-bold">GET</span></td><td class="p-2"><code>/v1/analytics</code></td><td class="p-2">Keyword dan waktu respons</td><td class="p-2">-</td></tr><tr><td class="p-2"><span class="text-blue-700 font-bold">GET</span></td><td class="p-2"><code>/v1/export/:type</code></td><td class="p-2">Export messages, contacts, transactions</td><td class="p-2">format CSV</td></tr></tbody></table></div></div><div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-2">Uji Coba Endpoint</h2><p class="text-sm text-gray-500 mb-4">Masukkan API key lalu pilih endpoint. Hasil response akan tampil di bawah.</p><div class="grid md:grid-cols-2 gap-3"><input id="test-api-key" placeholder="API Key: wa_xxx" class="border p-2 rounded"><select id="test-endpoint" class="border p-2 rounded"><option value="send">POST /v1/send-message</option><option value="batch">POST /v1/send-batch</option><option value="status">GET /v1/status</option><option value="analytics">GET /v1/analytics</option><option value="export">GET /v1/export/messages</option></select></div><div class="grid md:grid-cols-3 gap-3 mt-3"><input id="test-device" value="device-1" placeholder="Device ID" class="border p-2 rounded"><input id="test-number" placeholder="628123456789" class="border p-2 rounded"><input id="test-message" value="Pesan uji dari API" placeholder="Isi pesan" class="border p-2 rounded"></div><div class="flex gap-2 mt-4"><button onclick="testSelectedEndpoint()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Jalankan Endpoint</button><button onclick="document.getElementById('test-result').classList.add('hidden')" class="border px-4 py-2 rounded">Bersihkan</button></div><pre id="test-result" class="bg-gray-950 text-green-400 p-4 rounded mt-4 hidden text-xs overflow-x-auto whitespace-pre-wrap"></pre></div><div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-3">Server Token</h2><p class="text-sm text-gray-500 mb-4">Alternatif API key untuk server internal.</p><button onclick="generateServerToken()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 mb-4">+ Buat Server Token</button><div id="server-tokens-list" class="space-y-2"></div></div></div>`;
+        loadApiKeys(); loadServerTokens(); setupApiEndpointExamples();
+      }
+
+      if (tab === 'billing') {
+        const expiredDate = CURRENT_BILLING.expired? new Date(CURRENT_BILLING.expired).toLocaleDateString('id-ID') : '-';
+        const sisaBadge = CURRENT_BILLING.plan!== 'Gratis'? `<div class="mt-2 text-sm">Sisa: <b class="text-green-600">${CURRENT_BILLING.sisaHari} Hari</b> | Expired: <b>${expiredDate}</b></div>` : '';
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-2xl mb-4">💳 Paket & Pembayaran</h2><p class="text-gray-600 mb-2">Paket kamu saat ini: <b class="text-blue-600" id="current-plan">${CURRENT_BILLING.plan}</b></p>${sisaBadge}<div class="grid md:grid-cols-3 gap-4 mt-6"><div class="border-2 border-gray-200 rounded-xl p-5"><h3 class="font-bold text-xl">Gratis</h3><p class="text-3xl font-bold my-3">Rp 0 <span class="text-sm font-normal">/bulan</span></p><ul class="text-sm space-y-2 mb-4"><li>✅ 1 Akun WhatsApp</li><li>✅ 100 Auto Reply / hari</li><li>✅ 500 Pesan API / bulan</li><li>❌ Webhook & Support Prioritas</li></ul><button disabled class="w-full bg-gray-300 text-gray-600 px-4 py-2 rounded font-semibold">Paket Aktif</button></div><div class="border-2 ${CURRENT_BILLING.plan === 'Junior'? 'border-green-500' : 'border-blue-500'} rounded-xl p-5 shadow-lg relative"><span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs px-3 py-1 rounded-full">POPULER</span><h3 class="font-bold text-xl">Junior</h3><p class="text-3xl font-bold my-3">Rp 50.000 <span class="text-sm font-normal">/bulan</span></p><ul class="text-sm space-y-2 mb-4"><li>✅ 3 Akun WhatsApp</li><li>✅ Auto Reply Unlimited</li><li>✅ 10.000 Pesan API / bulan</li><li>✅ Webhook + Support Prioritas</li></ul><button onclick="selectPlan('Junior', 50000)" class="w-full bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">${CURRENT_BILLING.plan === 'Junior'? 'Perpanjang' : 'Upgrade'}</button></div><div class="border-2 ${CURRENT_BILLING.plan === 'Senior'? 'border-green-500' : 'border-indigo-600'} rounded-xl p-5"><h3 class="font-bold text-xl">Senior</h3><p class="text-3xl font-bold my-3">Rp 150.000 <span class="text-sm font-normal">/bulan</span></p><ul class="text-sm space-y-2 mb-4"><li>✅ 10 Akun WhatsApp</li><li>✅ Auto Reply Unlimited</li><li>✅ API Unlimited</li><li>✅ Webhook + Custom Domain + Support 24/7</li></ul><button onclick="selectPlan('Senior', 150000)" class="w-full bg-indigo-600 text-white px-4 py-2 rounded font-semibold hover:bg-indigo-700">${CURRENT_BILLING.plan === 'Senior'? 'Perpanjang' : 'Upgrade'}</button></div></div><div id="payment-section" class="hidden mt-6"><h2 class="font-bold text-xl mb-4">Pilih Metode Pembayaran</h2><div id="payment-methods" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div><div id="payment-result" class="mt-6"></div></div></div>`;
+        loadRegionalPricing();
+        if (selectedPlan) loadPaymentMethods();
+      }
+
+      if (tab === 'admin') {
+        loadPendingPayments();
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-4">🛡️ Panel Admin</h2><div class="border-b mb-4"><button onclick="loadPendingPayments()" id="btn-pending" class="px-4 py-2 font-semibold border-b-2 border-blue-600 text-blue-600">Pembayaran Masuk</button><button onclick="loadBannedIPsTab()" id="btn-ip" class="px-4 py-2 font-semibold text-gray-500">IP Terblokir</button><button onclick="loadOTPListTab()" id="btn-otp" class="px-4 py-2 font-semibold text-gray-500">OTP Aktif</button><button onclick="loadCouponsTab()" id="btn-coupon" class="px-4 py-2 font-semibold text-gray-500">Kupon</button></div><div id="admin-content"><p>Loading...</p></div></div>`;
+      }
+
+      if (tab === 'docs') {
+        document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-2xl mb-2">📚 Dokumentasi API Publik</h2><div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4"><p class="font-bold">URL Dasar</p><code>${BASE_URL}/v1</code><p class="text-xs text-gray-500 mt-2">Semua endpoint API Key memakai header <code>x-api-key</code>.</p></div><div class="space-y-4"><div class="border p-4 rounded-lg"><h3 class="font-bold text-lg">Kirim Pesan</h3><pre class="bg-black text-green-400 p-2 rounded text-xs">POST ${BASE_URL}/v1/send-message\nx-api-key: wa_kunci_anda\nContent-Type: application/json\n{\n "number": "628123456789",\n "message": "Halo dari aplikasi saya"\n}\n\nResponse 200:\n{"success":true,"message":"Pesan terkirim","number":"628123456789","ping":"120ms"}</pre></div><div class="border p-4 rounded-lg"><h3 class="font-bold text-lg">Kirim Batch</h3><pre class="bg-black text-green-400 p-2 rounded text-xs">POST ${BASE_URL}/v1/send-batch\nx-api-key: wa_kunci_anda\n{"messages":[{"number":"628123456789","message":"Halo"}]}</pre></div><div class="border p-4 rounded-lg"><h3 class="font-bold text-lg">Analytics dan Export</h3><pre class="bg-black text-green-400 p-2 rounded text-xs">GET ${BASE_URL}/v1/analytics\nx-api-key: wa_kunci_anda\n\nGET ${BASE_URL}/v1/export/messages\nx-api-key: wa_kunci_anda</pre></div><div class="border p-4 rounded-lg border-blue-500"><h3 class="font-bold text-lg">Server Token</h3><pre class="bg-black text-green-400 p-2 rounded text-xs mt-2">Authorization: Bearer srv_token_anda</pre></div></div></div>`;
+        setTimeout(() => {
+          const docs = document.querySelector('#content > div');
+          if (docs && !document.getElementById('instanlive-api-credentials')) docs.insertAdjacentHTML('beforeend', '<div id="instanlive-api-credentials" class="mt-4 border p-4 rounded-lg border-green-500"><h3 class="font-bold text-lg">Kredensial InstanLive</h3><p class="text-sm text-gray-600 mt-1">Untuk API WhatsApp publik, gunakan API Key atau Server Token seperti contoh di atas. API Secret hanya digunakan server untuk membuat signature pembayaran InstanLive dan tidak dikirim ke endpoint WhatsApp.</p><div class="grid md:grid-cols-2 gap-3 mt-3 text-sm"><div class="bg-gray-50 p-3 rounded"><b>API Key pembayaran</b><code class="block mt-1">apg_live_xxx</code></div><div class="bg-gray-50 p-3 rounded"><b>API Secret pembayaran</b><code class="block mt-1">aps_xxx</code></div></div><p class="text-xs text-gray-500 mt-3">Simpan keduanya di file .env server. Jangan menaruh secret di frontend, dokumentasi publik, atau repository.</p></div>');
+        }, 0);
+      }
+
+      if (tab === 'bug') { document.getElementById('content').innerHTML = `<div class="bg-white p-5 rounded-xl shadow"><h2 class="font-bold text-lg mb-4">Laporkan Bug</h2><form onsubmit="sendBug(event)" class="space-y-4"><input id="bug-subject" placeholder="Judul Bug" class="border p-2 rounded w-full" required><textarea id="bug-message" placeholder="Jelaskan detail bug..." rows="5" class="border p-2 rounded w-full" required></textarea><button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Kirim Laporan</button></form></div>`; }
+      if (tab === 'faq') { document.getElementById('content').innerHTML = `<div class="bg-white p-6 rounded-xl shadow"><h1 class="text-3xl font-bold mb-6">FAQ</h1><div class="space-y-4"><div><h3 class="font-bold">1. Berapa lama aktivasi setelah bayar?</h3><p class="text-gray-600">Otomatis. Maks 1 menit setelah admin konfirmasi.</p></div><div><h3 class="font-bold">2. Bisa dipakai berapa device?</h3><p class="text-gray-600">1 Akun = 1 Device WhatsApp. Mau ganti device? Hubungi admin.</p></div><div><h3 class="font-bold">3. Apakah ada garansi anti banned?</h3><p class="text-gray-600">Tidak ada. Gunakan dengan bijak. Spam = resiko tanggung sendiri.</p></div><div><h3 class="font-bold">4. Data chat saya aman?</h3><p class="text-gray-600">Aman. Kami tidak menyimpan isi chat. Hanya session login saja.</p></div></div></div>`; }
+      if (tab === 'refund') { document.getElementById('content').innerHTML = `<div class="bg-white p-6 rounded-xl shadow"><h1 class="text-3xl font-bold mb-6">Refund Policy</h1><ul class="list-disc pl-5 space-y-2 text-gray-700"><li>Semua pembayaran bersifat FINAL dan TIDAK DAPAT DIREFUND.</li><li>Refund hanya dilakukan jika sistem kami down > 7 hari berturut-turut.</li><li>Jika paket tidak aktif dalam 1x24 jam setelah bayar, hubungi admin untuk aktivasi manual.</li><li>Akun yang terkena banned WhatsApp tidak bisa refund.</li></ul></div>`; }
+      if (tab === 'kontak') { document.getElementById('content').innerHTML = `<div class="bg-white p-6 rounded-xl shadow"><h1 class="text-3xl font-bold mb-6">Kontak</h1><p class="text-gray-600 mb-4">Butuh bantuan? Hubungi kami:</p><div class="space-y-3"><p><b>WhatsApp:</b> <a href="https://wa.me/6285147696883" class="text-blue-600">0851-4769-6883</a></p><p><b>Email:</b> <a href="mailto:icodedevs2012@gmail.com" class="text-blue-600">icodedevs2012@gmail.com</a></p><p><b>Jam Operasional:</b> 09:00 - 21:00 WIB</p></div></div>`; }
+    }
+
+function selectPlan(plan, amount) { 
+  selectedPlan = plan; 
+  selectedAmount = amount; 
+  document.getElementById('payment-section').classList.remove('hidden'); 
+  if (!document.getElementById('billing-coupon')) document.getElementById('payment-section').insertAdjacentHTML('afterbegin', '<div class="mb-4"><label class="block text-sm font-semibold mb-1">Kode kupon (opsional)</label><input id="billing-coupon" class="border p-2 rounded w-full" placeholder="DISKONPRO50"></div>');
+  loadPaymentMethods(); 
+  window.scrollTo(0, document.body.scrollHeight); 
+}
+
+async function loadPaymentMethods() { 
+  const res = await apiFetch('/api/billing/payment-methods'); 
+  const data = await res.json(); 
+  const container = document.getElementById('payment-methods'); 
+  if (!container) return; 
+  container.innerHTML = ''; 
+  
+  data.methods.forEach(group => { 
+    container.innerHTML += `<h3 class="col-span-2 md:col-span-4 font-bold mt-4 text-lg">${group.group}</h3>`; 
+    group.items.forEach(m => { 
+      container.innerHTML += `<button onclick="createPayment('${m.code}')" class="border-2 hover:border-blue-500 p-4 rounded-lg bg-white flex-col items-center justify-center transition h-28"><img src="${m.logo}" class="h-10 mb-2 object-contain"><span class="text-sm font-semibold text-center">${m.name}</span></button>`; 
+    }); 
+  }); // <- INI YANG KETINGGALAN
+}
+
+async function requestCreatePayment(endpoint) { 
+  const res = await apiFetch(endpoint, { 
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify({ plan: selectedPlan, amount: selectedAmount, coupon: document.getElementById('billing-coupon')?.value || '', paymentMethod: window.selectedPaymentMethod || 'qris' }) 
+  }); 
+  const raw = await res.text();
+  let data;
+  try { data = JSON.parse(raw); } catch { data = { success: false, message: `Respons tidak valid dari ${endpoint} (HTTP ${res.status})` }; }
+  return { res, data }; 
+}
+
+async function createPayment(method) { 
+  window.selectedPaymentMethod = method;
+  const resultBox = document.getElementById('payment-result'); 
+  resultBox.innerHTML = `<div class="text-center p-6"><i class="fas fa-spinner fa-spin text-2xl text-blue-600"></i><p class="mt-2">Membuat invoice...</p></div>`; 
+  
+  const endpoints = method === 'xendit' ? ['/api/billing/create-xendit-invoice'] : ['/api/billing/create-qris']; 
+  let lastError = null; 
+  
+  for (const endpoint of endpoints) { 
+    try { 
+      const { res, data } = await requestCreatePayment(endpoint); 
+      if (res.ok && data.success) { 
+        const qrUrl = data.qr_url || data.qr_image; 
+        const paymentUrl = data.payment_url || data.qr_url || data.qr_image;
+        const channel = data.payment_channel || {};
+        const orderId = data.order_id || data.transaction_id; 
+        if (!qrUrl && !paymentUrl) throw new Error('Link pembayaran tidak ditemukan'); 
+        
+        const channelDetails = Object.entries(channel).filter(([key, value]) => value && key !== 'qris_string').map(([key, value]) => `<p><b>${key.replaceAll('_', ' ')}:</b> ${value}</p>`).join('');
+        resultBox.innerHTML = `<div class="border-2 border-blue-500 rounded-xl p-6 bg-white shadow-lg text-center"><h3 class="text-xl font-bold text-gray-800 mb-2">💳 Pembayaran ${selectedPlan}</h3><p class="text-gray-600 mb-4">Metode: ${window.selectedPaymentMethod}</p>${qrUrl ? `<div class="flex justify-center mb-4"><img src="${qrUrl}" class="w-72 h-72 object-contain border rounded-lg p-2 bg-white"></div>` : ''}<div class="bg-gray-50 rounded-lg p-3 text-sm mb-4 text-left"><p class="text-gray-500">Detail pembayaran</p>${channelDetails || '<p>Invoice ID: ' + (orderId || '-') + '</p>' || '<p>Tanggal Pembayaran: ' + (data.payment_date || '-') + '</p>' || '<p>Status: ' + (data.status || '-') + '</p>'}</div><div class="bg-gray-50 rounded-lg p-3 text-sm mb-4"><p class="text-gray-500">Order ID</p><p class="font-mono font-bold break-all">${orderId || '-'}</p></div><p class="font-bold text-lg mb-4">Total: Rp ${Number(selectedAmount).toLocaleString('id-ID')}</p><div class="flex gap-2 justify-center"><a href="${paymentUrl}" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">🔗 Buka Halaman Pembayaran</a><button onclick="loadTab('billing')" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">Kembali</button></div><div class="mt-5 p-3 bg-yellow-50 border-yellow-200 rounded-lg text-sm text-yellow-800">⏳ Menunggu pembayaran... halaman akan otomatis update jika sudah lunas.</div></div>`; 
+        
+        if (orderId) cekStatusBayar(orderId); 
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+        return; 
+      } 
+      lastError = new Error(data.message || `Endpoint ${endpoint} gagal`); 
+      if (res.status !== 404) throw lastError; 
+    } catch (err) { 
+      lastError = err; 
+    } 
+
+    async function loadRegionalPricing() { const content = document.getElementById('content'); if (!content || currentTab !== 'billing' || document.getElementById('regional-pricing')) return; const box = document.createElement('div'); box.id = 'regional-pricing'; box.className = 'bg-white p-5 rounded-xl shadow mb-6'; box.innerHTML = '<div class="flex flex-wrap items-end gap-3"><label class="text-sm font-semibold">Harga regional<select id="pricing-country" class="border p-2 rounded w-full mt-1"><option value="62">Indonesia (+62)</option><option value="60">Malaysia (+60)</option><option value="65">Singapura (+65)</option><option value="1">Amerika (+1)</option><option value="63">Filipina (+63)</option></select></label><div id="regional-price-values" class="text-sm text-gray-600">Memuat harga...</div></div>'; content.insertBefore(box, content.firstElementChild); const update = async () => { const data = await (await apiFetch('/api/billing/pricing?countryCode=' + document.getElementById('pricing-country').value)).json(); const p = data.pricing; document.getElementById('regional-price-values').innerText = `Junior: ${p.symbol}${p.junior.toLocaleString('id-ID')} | Senior: ${p.symbol}${p.senior.toLocaleString('id-ID')} | Harga dasar: Rp50.000 / Rp150.000`; }; document.getElementById('pricing-country').onchange = update; update(); }
+  } 
+  
+  resultBox.innerHTML = `<div class="bg-red-100 border border-red-300 text-red-700 p-4 rounded-lg"><p class="font-bold mb-1">❌ Gagal membuat pembayaran</p><p>${lastError?.message || 'Endpoint tidak ditemukan'}</p></div>`; 
+  showPopup(lastError?.message || 'Endpoint tidak ditemukan', 'error'); 
+}
+async function loadPendingPayments() {
+      const btnPending = document.getElementById('btn-pending');
+      const btnIp = document.getElementById('btn-ip');
+      const btnOTP = document.getElementById('btn-otp');
+      if (btnPending) btnPending.classList.add('border-blue-600', 'text-blue-600');
+      if (btnIp) btnIp.classList.remove('border-blue-600', 'text-blue-600');
+      if (btnOTP) btnOTP.classList.remove('border-blue-600', 'text-blue-600');
+
+      const res = await apiFetch('/api/admin/pending-payments');
+      const data = await res.json();
+      const adminContent = document.getElementById('admin-content');
+      if (!adminContent) return;
+
+      adminContent.innerHTML = data.pendings.length === 0
+        ? '<p class="text-gray-500 text-center py-10">Tidak ada pembayaran pending</p>'
+        : `<div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b bg-gray-50"><th class="p-2">Order ID</th><th class="p-2">User ID</th><th class="p-2">Paket</th><th class="p-2">Total</th><th class="p-2">Aksi</th></tr></thead><tbody>${data.pendings.map(p => `<tr class="border-b"><td class="p-2 text-xs">${p.order_id}</td><td class="p-2 text-xs">${p.userId}</td><td class="p-2"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${p.plan}</span></td><td class="p-2 font-bold">Rp ${p.amount.toLocaleString('id-ID')}</td><td class="p-2"><button onclick="konfirmasiBayar('${p.order_id}')" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Konfirmasi</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
+
+    async function konfirmasiBayar(order_id) {
+      const res = await apiFetch(`/api/billing/konfirmasi/${order_id}`, { method: 'POST' });
+      const data = await res.json();
+      showPopup(data.message);
+      loadPendingPayments();
+    }
+
+    async function loadBannedIPsTab() {
+      const btnPending = document.getElementById('btn-pending');
+      const btnIp = document.getElementById('btn-ip');
+      const btnOTP = document.getElementById('btn-otp');
+      if (btnIp) btnIp.classList.add('border-blue-600', 'text-blue-600');
+      if (btnPending) btnPending.classList.remove('border-blue-600', 'text-blue-600');
+      if (btnOTP) btnOTP.classList.remove('border-blue-600', 'text-blue-600');
+
+      const res = await apiFetch('/api/admin/banned-ips');
+      const data = await res.json();
+      const adminContent = document.getElementById('admin-content');
+      if (!adminContent) return;
+      adminContent.innerHTML = data.ips.length === 0 ? '<p class="text-gray-500 text-center py-10">Tidak ada IP yang diblokir</p>' : data.ips.map(ip => `<div class="p-3 bg-red-50 rounded-lg flex justify-between items-center mb-2"><code class="text-red-600">${ip}</code><button onclick="unbanIP('${ip}')" class="text-xs bg-green-500 text-white px-3 py-1 rounded">Buka Blokir</button></div>`).join('');
+    }
+
+    async function loadOTPListTab() {
+      const btnPending = document.getElementById('btn-pending');
+      const btnIp = document.getElementById('btn-ip');
+      const btnOTP = document.getElementById('btn-otp');
+      if (btnOTP) btnOTP.classList.add('border-blue-600', 'text-blue-600');
+      if (btnPending) btnPending.classList.remove('border-blue-600', 'text-blue-600');
+      if (btnIp) btnIp.classList.remove('border-blue-600', 'text-blue-600');
+
+      const res = await apiFetch('/api/admin/otp-list');
+      const data = await res.json();
+      const adminContent = document.getElementById('admin-content');
+      if (!adminContent) return;
+      adminContent.innerHTML = data.otp_list.length === 0 ? '<p class="text-gray-500 text-center py-10">Tidak ada OTP aktif</p>' : `<div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b bg-gray-50"><th class="p-2">Nomor</th><th class="p-2">OTP</th><th class="p-2">Dibuat</th><th class="p-2">Sisa Waktu</th><th class="p-2">Status</th></tr></thead><tbody>${data.otp_list.map(otp => `<tr class="border-b"><td class="p-2 text-xs">${otp.phone}</td><td class="p-2"><code class="bg-gray-100 px-2 py-1 rounded text-sm">${otp.otp}</code></td><td class="p-2 text-xs">${otp.createdAt}</td><td class="p-2 text-xs">${otp.remainingTime}s</td><td class="p-2"><span class="text-xs px-2 py-1 rounded ${otp.isExpired ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${otp.isExpired ? 'Expired' : 'Active'}</span></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    async function loadCouponsTab() { const res = await apiFetch('/api/admin/coupons'); const data = await res.json(); const adminContent = document.getElementById('admin-content'); adminContent.innerHTML = `<form onsubmit="createCoupon(event)" class="flex flex-wrap gap-2 mb-5"><input id="coupon-code" placeholder="DISKONPRO50" class="border p-2 rounded" required><input id="coupon-discount" type="number" min="1" max="100" placeholder="Diskon %" class="border p-2 rounded" required><button class="bg-blue-600 text-white px-4 py-2 rounded">Buat Kupon</button></form><div class="space-y-2">${data.coupons.map(coupon => `<div class="border p-3 rounded flex justify-between"><span><b>${coupon.code}</b> - ${coupon.discount}%</span><span>${coupon.active ? 'Aktif' : 'Nonaktif'} (${coupon.uses || 0} dipakai)</span></div>`).join('') || '<p class="text-gray-500">Belum ada kupon</p>'}</div>`; }
+    async function createCoupon(e) { e.preventDefault(); const res = await apiFetch('/api/admin/coupons', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: document.getElementById('coupon-code').value, discount: Number(document.getElementById('coupon-discount').value) }) }); const data = await res.json(); showPopup(data.message, data.success ? 'success' : 'error'); if (data.success) loadCouponsTab(); }
+
+    async function unbanIP(ip) {
+      await apiFetch('/api/admin/unban-ip', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip }) });
+      showPopup(`IP ${ip} berhasil dibuka`);
+      loadBannedIPsTab();
+    }
+
+    async function loadServerTokens() {
+      const res = await apiFetch('/api/my-server-tokens');
+      const data = await res.json();
+      const list = document.getElementById('server-tokens-list');
+      if (!list) return;
+      list.innerHTML = data.tokens.map(t => `<div class="p-3 bg-gray-100 border rounded-lg flex justify-between items-center"><code class="text-green-600 break-all text-sm">${t}</code><button onclick="revokeServerToken('${t}')" class="text-xs bg-red-500 text-white px-3 py-1 rounded">Hapus</button></div>`).join('') || '<p class="text-gray-500">Belum ada Token</p>';
+    }
+
+    async function generateServerToken() {
+      const res = await apiFetch('/api/generate-server-token', { method: 'POST' });
+      const data = await res.json();
+      showPopup('Token baru berhasil dibuat');
+      navigator.clipboard.writeText(data.token);
+      loadServerTokens();
+    }
+
+    async function revokeServerToken(token) {
+      await apiFetch('/api/delete-server-token', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+      showPopup('Token berhasil dihapus');
+      loadServerTokens();
+    }
+
+    async function loadApiKeys() {
+      const res = await apiFetch('/api/my-keys');
+      const data = await res.json();
+      const list = document.getElementById('api-keys-list');
+      if (!list) return;
+      list.innerHTML = data.keys.map(k => `<div class="p-3 bg-gray-100 border rounded-lg flex justify-between items-center"><code class="text-green-600 break-all text-sm">${k}</code><div class="flex gap-2"><button onclick="navigator.clipboard.writeText('${k}'); showPopup('Key disalin')" class="text-xs bg-blue-500 text-white px-3 py-1 rounded">Salin</button><button onclick="revokeKey('${k}')" class="text-xs bg-red-500 text-white px-3 py-1 rounded">Hapus</button></div></div>`).join('') || '<p class="text-gray-500">Belum ada API Key</p>';
+    }
+
+    async function generateApiKey() {
+      await apiFetch('/api/generate-key', { method: 'POST' });
+      showPopup('API Key baru berhasil dibuat');
+      loadApiKeys();
+    }
+
+    async function revokeKey(key) {
+      showModal({ title: 'Hapus API Key?', text: 'Yakin ingin menghapus key ini?', buttons: [{ text: 'Batal', color: 'bg-gray-200 text-gray-800 hover:bg-gray-300', action: () => {} },{ text: 'Ya, Hapus', color: 'bg-red-600 text-white hover:bg-red-700', action: async () => { await apiFetch('/api/delete-key', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) }); showPopup('API Key berhasil dihapus'); loadApiKeys(); }}] });
+    }
+
+    async function testApiKey() {
+      const key = document.getElementById('test-api-key').value;
+      const country = document.getElementById('test-country').value;
+      const number = document.getElementById('test-number').value;
+      const message = document.getElementById('test-message').value;
+      const resultBox = document.getElementById('test-result');
+      if (!key || !number || !message) { showPopup('Semua wajib diisi', 'error'); return; }
+      resultBox.classList.remove('hidden'); resultBox.innerText = 'Mengirim...';
+      try {
+        const res = await fetch(`${BASE_URL}/api/send-message`, { method: 'POST', headers: { 'x-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ number: country + number, message }) });
+        const data = await res.json();
+        resultBox.innerText = JSON.stringify(data, null, 2);
+        showPopup(data.message, data.success ? 'success' : 'error');
+        if (data.ping) document.getElementById('ping-text').innerText = data.ping;
+      } catch (e) { resultBox.innerText = 'Error: ' + e.message; showPopup('Gagal mengirim', 'error'); }
+    }
+
+    async function testSelectedEndpoint() {
+      const key = document.getElementById('test-api-key').value.trim();
+      const endpoint = document.getElementById('test-endpoint').value;
+      const deviceId = document.getElementById('test-device').value.trim() || 'device-1';
+      const number = document.getElementById('test-number').value.trim();
+      const message = document.getElementById('test-message').value;
+      const resultBox = document.getElementById('test-result');
+      if (!key) { showPopup('API key wajib diisi', 'error'); return; }
+      let url = `${BASE_URL}/v1/`, options = { headers: { 'x-api-key': key } };
+      if (endpoint === 'send') { url += 'send-message'; options.method = 'POST'; options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify({ number, message, deviceId }); }
+      if (endpoint === 'batch') { url += 'send-batch'; options.method = 'POST'; options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify({ messages: [{ number, message, deviceId }] }); }
+      if (endpoint === 'status') url += `status?deviceId=${encodeURIComponent(deviceId)}`;
+      if (endpoint === 'analytics') url += 'analytics';
+      if (endpoint === 'export') url += 'export/messages';
+      resultBox.classList.remove('hidden'); resultBox.textContent = `Memanggil ${options.method || 'GET'} ${url}...`;
+      try { const response = await fetch(url, options); const raw = await response.text(); let output = raw; try { output = JSON.stringify(JSON.parse(raw), null, 2); } catch {} resultBox.textContent = `HTTP ${response.status} ${response.statusText}\n\n${output.slice(0, 15000)}`; showPopup(response.ok ? 'Endpoint berhasil diuji' : 'Endpoint mengembalikan error', response.ok ? 'success' : 'error'); } catch (error) { resultBox.textContent = `Request gagal\n\n${error.message}`; showPopup('Gagal memanggil endpoint', 'error'); }
+    }
+
+    function setupApiEndpointExamples() { const rows = document.querySelectorAll('#content table tbody tr'); rows.forEach((row, index) => { row.classList.add('cursor-pointer', 'hover:bg-blue-50'); row.onclick = () => toggleApiExample(row, index); }); }
+    function toggleApiExample(row, index) { const current = row.nextElementSibling; if (current?.classList.contains('api-example-row')) { current.remove(); return; } document.querySelectorAll('.api-example-row').forEach(item => item.remove()); const examples = [{ title: 'Kirim satu pesan', code: `curl -X POST "${BASE_URL}/v1/send-message" ^\n  -H "x-api-key: wa_xxx" ^\n  -H "Content-Type: application/json" ^\n  -d "{\\"number\\":\\"628123456789\\",\\"message\\":\\"Halo\\",\\"deviceId\\":\\"device-1\\"}"` }, { title: 'Kirim batch', code: `curl -X POST "${BASE_URL}/v1/send-batch" ^\n  -H "x-api-key: wa_xxx" ^\n  -H "Content-Type: application/json" ^\n  -d "{\\"messages\\":[{\\"number\\":\\"628123456789\\",\\"message\\":\\"Halo\\"}]}"` }, { title: 'Cek status WhatsApp', code: `curl "${BASE_URL}/v1/status?deviceId=device-1" -H "x-api-key: wa_xxx"` }, { title: 'Ambil analytics', code: `curl "${BASE_URL}/v1/analytics" -H "x-api-key: wa_xxx"` }, { title: 'Export data pesan', code: `curl "${BASE_URL}/v1/export/messages" -H "x-api-key: wa_xxx" -o messages.csv` }]; const detail = document.createElement('tr'); detail.className = 'api-example-row bg-gray-50'; detail.innerHTML = `<td colspan="4" class="p-3"><p class="font-semibold mb-2">${examples[index]?.title || 'Contoh endpoint'}</p><pre class="bg-gray-950 text-green-400 p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap">${(examples[index]?.code || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;')}</pre></td>`; row.after(detail); }
+
+    async function loadStatus() {
+      if (currentTab !== 'dashboard') return;
+      try {
+        const deviceId = getSelectedDeviceId();
+        const res = await apiFetch('/api/status?deviceId=' + encodeURIComponent(deviceId));
+        const data = await res.json();
+        const devicesList = document.getElementById('devices-list');
+        if (devicesList) devicesList.innerHTML = (data.devices || []).map(device => `<button onclick="document.getElementById('device-id').value='${device.deviceId}'; loadStatus()" class="border p-2 rounded text-left ${device.deviceId === deviceId ? 'border-blue-500 bg-blue-50' : ''}"><b>${device.deviceId}</b><span class="block text-xs ${device.connected ? 'text-green-600' : 'text-gray-500'}">${device.status}</span></button>`).join('') || '<p class="text-sm text-gray-500">Belum ada perangkat. Gunakan device-1 lalu tambah device-2.</p>';
+        const dotClass = data.status.includes('Terhubung') ? 'green' : data.status.includes('Menunggu') ? 'yellow' : 'red';
+        ['status-text', 'status-text-2'].forEach(id => { const el = document.getElementById(id); if (el) el.innerText = data.status; });
+        ['status-dot', 'status-dot-2'].forEach(id => { const el = document.getElementById(id); if (el) el.className = 'status-dot ' + dotClass; });
+        const qrBox = document.getElementById('qr-box'); const codeDisplayBox = document.getElementById('code-display-box'); const numberInputBox = document.getElementById('number-input-box');
+        if (!qrBox) return;
+        if (data.qr) { qrBox.classList.remove('hidden'); document.getElementById('qr-img').src = data.qr; codeDisplayBox.classList.add('hidden'); numberInputBox.classList.add('hidden'); clearInterval(codeTimerInterval); }
+        else if (data.code) { qrBox.classList.add('hidden'); codeDisplayBox.classList.remove('hidden'); numberInputBox.classList.add('hidden'); const formattedCode = data.code.match(/.{1,4}/g).join('-'); document.getElementById('code-text').innerText = formattedCode; startCodeTimer(20); }
+        else { qrBox.classList.add('hidden'); codeDisplayBox.classList.add('hidden'); numberInputBox.classList.remove('hidden'); clearInterval(codeTimerInterval); }
+        const btn = document.getElementById('btn-logout-wa'); if (btn) btn.classList.toggle('hidden', dotClass !== 'green');
+        const countryEl = document.getElementById('country-name'); if (countryEl) countryEl.innerText = data.country;
+        isRequesting = false;
+      } catch (e) { isRequesting = false; }
+    }
+
+    function startCodeTimer(seconds) {
+      clearInterval(codeTimerInterval); let timeLeft = seconds; const timerEl = document.getElementById('code-timer');
+      codeTimerInterval = setInterval(() => { timerEl.innerText = `Kode kadaluarsa dalam ${timeLeft} detik`; timeLeft--; if (timeLeft < 0) { clearInterval(codeTimerInterval); timerEl.innerText = 'Kode kadaluarsa'; document.getElementById('code-text').innerText = '---- ----'; } }, 1000);
+    }
+
+    function getSelectedDeviceId() { const input = document.getElementById('device-id'); return (input?.value || 'device-1').trim() || 'device-1'; }
+    function refreshDeviceStatus() { loadStatus(); }
+    function copyCode() { const code = document.getElementById('code-text').innerText.replaceAll('-', ''); navigator.clipboard.writeText(code); showPopup('Kode ' + code + ' berhasil disalin!'); }
+    async function connectQR() { if (isRequesting) return; isRequesting = true; try { const deviceId = getSelectedDeviceId(); await apiFetch('/connect-qr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId }) }); showPopup(`QR ${deviceId} dibuat. Tunggu 3 detik`); } catch (error) { showPopup(error.message || 'Gagal membuat QR', 'error'); } setTimeout(() => isRequesting = false, 3000); }
+    function switchToCodeTab() { document.getElementById('qr-box').classList.add('hidden'); document.getElementById('number-input-box').classList.remove('hidden'); showPopup('Masukkan nomor untuk dapat kode'); }
+    function switchToQRTab() { document.getElementById('code-display-box').classList.add('hidden'); document.getElementById('number-input-box').classList.remove('hidden'); showPopup('Silakan klik Buat QR Baru'); }
+    async function connectNumber() { if (isRequesting) return; isRequesting = true; const c = document.getElementById('country').value; const n = document.getElementById('number').value; const deviceId = getSelectedDeviceId(); if (!n) { showPopup('Nomor wajib diisi', 'error'); isRequesting = false; return; } showPopup(`Mengirim kode untuk ${deviceId}...`); document.getElementById('number-input-box').classList.add('hidden'); try { await apiFetch('/connect-number', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ countryCode: c, number: n, deviceId }) }); for (let i = 0; i < 10; i++) { setTimeout(loadStatus, i * 500); } } catch (e) { showPopup(e.message || 'Gagal minta kode', 'error'); } setTimeout(() => isRequesting = false, 5000); }
+    function confirmLogoutWA() { showModal({ title: 'Putus Koneksi WhatsApp?', text: `Sesi perangkat ${getSelectedDeviceId()} akan dihapus.`, buttons: [{ text: 'Tidak', color: 'bg-gray-200 text-gray-800 hover:bg-gray-300', action: () => {} },{ text: 'Ya, Putus', color: 'bg-red-600 text-white hover:bg-red-700', action: logoutWA }] }); }
+    async function logoutWA() { const res = await apiFetch('/logout-wa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: getSelectedDeviceId() }) }); const data = await res.json(); showPopup(data.message, data.success ? 'success' : 'error'); loadStatus(); }
+    async function addReply(e) { e.preventDefault(); const trigger = document.getElementById('trigger'); const response = document.getElementById('response'); repliesData.push({ trigger: trigger.value, response: response.value }); await apiFetch('/api/save-replies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replies: repliesData }) }); trigger.value = ''; response.value = ''; showPopup('Balasan ditambahkan'); loadTab('custom'); }
+    function previewHasPromotion(message) { const text = String(message || '').toLowerCase(); const hasLink = /https?:\/\/|www\.|(?:wa\.me|chat\.whatsapp\.com|t\.me|telegram\.me)\//i.test(message); const words = (antiPromoData.words || []).filter(word => text.includes(String(word).toLowerCase())); return { detected: hasLink || words.length > 0, reasons: [...(hasLink ? ['link mencurigakan'] : []), ...words.map(word => `kata "${word}"`)] }; }
+    function runChatPreview() { const message = document.getElementById('preview-message').value.trim(); const sender = document.getElementById('preview-sender').value.trim() || 'Pengirim'; const role = document.getElementById('preview-role').value; const log = document.getElementById('preview-log'); if (!message) { showPopup('Pesan simulasi wajib diisi', 'error'); return; } const promotion = previewHasPromotion(message); const bypass = role === 'admin' || role === 'whitelist'; const reply = repliesData.find(item => item.trigger?.toLowerCase().trim() === message.toLowerCase().trim()); const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); let result = ''; if (antiPromoData.enabled && promotion.detected && !bypass) { result = `<div class="border border-red-200 bg-red-50 rounded-lg p-3"><p class="font-semibold text-red-700">Pesan dihapus oleh bot</p><p class="text-xs text-red-600 mt-1">Alasan: ${promotion.reasons.join(', ')}</p></div><div class="max-w-[85%] rounded-lg bg-white border p-3"><p class="text-xs font-semibold text-blue-600">Bot membalas dan mention @${sender}</p><p class="mt-1">@${sender} ${antiPromoData.replyText || 'Pesan promosi dihapus.'}</p></div>`; } else if (reply) { result = `<div class="border border-green-200 bg-green-50 rounded-lg p-3"><p class="font-semibold text-green-700">Pesan diterima</p><p class="text-xs text-green-600 mt-1">${bypass ? 'Pengirim admin/whitelist, melewati moderasi.' : 'Tidak terdeteksi sebagai promosi.'}</p></div><div class="max-w-[85%] rounded-lg bg-blue-600 text-white p-3 ml-auto"><p class="text-xs font-semibold">Bot</p><p class="mt-1">${reply.response}</p></div>`; } else { result = `<div class="border border-green-200 bg-green-50 rounded-lg p-3"><p class="font-semibold text-green-700">Pesan diterima</p><p class="text-xs text-green-600 mt-1">${bypass ? 'Pengirim admin/whitelist, melewati moderasi.' : 'Tidak ada auto-reply yang cocok.'}</p></div>`; } log.innerHTML = `<div class="max-w-[85%] rounded-lg bg-white border p-3"><div class="flex justify-between gap-4"><b>${sender}</b><span class="text-xs text-gray-400">${now}</span></div><p class="mt-2 whitespace-pre-wrap">${message.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</p></div>${result}`; }
+    function useTemplate(template) { document.getElementById('trigger').value = template.trigger; document.getElementById('response').value = template.response; document.getElementById('trigger').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    async function saveAntiPromo(e) { e.preventDefault(); const settings = { enabled: document.getElementById('anti-promo-enabled').checked, replyText: document.getElementById('anti-promo-reply').value, words: document.getElementById('anti-promo-words').value.split(',').map(word => word.trim()).filter(Boolean), whitelist: antiPromoData.whitelist || [] }; const res = await apiFetch('/api/save-anti-promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); antiPromoData = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function saveBotSettings(e) { e.preventDefault(); const settings = { welcomeEnabled: document.getElementById('bot-welcome-enabled').checked, welcomeDelete: document.getElementById('bot-welcome-delete').checked, welcomeDeleteAfter: Number(document.getElementById('bot-welcome-delete-after').value), welcomeText: document.getElementById('bot-welcome-text').value, leaveEnabled: document.getElementById('bot-leave-enabled').checked, leaveText: document.getElementById('bot-leave-text').value, commandsEnabled: document.getElementById('bot-commands-enabled').checked, jadibotEnabled: document.getElementById('bot-jadibot-enabled').checked, startBotText: document.getElementById('bot-start-text').value, botToken: botSettings.botToken, whitelistUser: document.getElementById('bot-whitelist-user')?.checked ?? botSettings.whitelistUser, whitelistNumbers: (document.getElementById('bot-whitelist-numbers')?.value || '').split(',').map(value => value.trim()).filter(Boolean), authorizedNumbers: botSettings.authorizedNumbers || [] }; const res = await apiFetch('/api/save-bot-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); botSettings = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function saveBotWhitelist() { const settings = { ...botSettings, whitelistUser: document.getElementById('bot-whitelist-user').checked, whitelistNumbers: document.getElementById('bot-whitelist-numbers').value.split(',').map(value => value.trim()).filter(Boolean) }; const res = await apiFetch('/api/save-bot-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); botSettings = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function saveUnsafeFilter() { const settings = { ...antiPromoData, obsceneEnabled: document.getElementById('bot-obscene-enabled').checked, obsceneWords: document.getElementById('bot-obscene-words').value.split(',').map(value => value.trim()).filter(Boolean), obsceneReply: document.getElementById('bot-obscene-reply').value }; const res = await apiFetch('/api/save-anti-promo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); antiPromoData = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function loadNewsGroups() { const res = await apiFetch('/api/whatsapp-groups'); const data = await res.json(); const container = document.getElementById('bot-news-groups'); if (!container) return; container.innerHTML = (data.groups || []).map(group => `<label class="flex items-center gap-2 text-sm border p-2 rounded"><input type="checkbox" value="${group.id}" ${botSettings.newsGroups.includes(group.id) ? 'checked' : ''}> ${group.name}</label>`).join('') || '<p class="text-sm text-gray-500">Tidak ada grup aktif.</p>'; const permissions = document.createElement('div'); permissions.className = 'bg-white p-5 rounded-xl shadow mb-6'; permissions.innerHTML = `<h2 class="font-bold text-lg mb-3">Provider dan Izin Grup</h2><label class="block text-sm font-semibold">Provider bot<select id="bot-provider-device" class="border p-2 rounded w-full mt-1"><option>Memuat provider...</option></select></label><p class="text-xs text-gray-500 mt-2">Pilih device WhatsApp yang akan diinvite ke grup. Device lain tidak menjalankan fitur bot.</p><label class="flex items-center gap-2 mt-3"><input id="bot-allow-invite" type="checkbox" class="w-4 h-4" ${botSettings.allowInvite ? 'checked' : ''}> Izinkan /InviteUser</label><label class="flex items-center gap-2 mt-2"><input id="bot-allow-kick" type="checkbox" class="w-4 h-4" ${botSettings.allowKick ? 'checked' : ''}> Izinkan /KickUser</label><p class="text-xs text-gray-500 mt-2">Pengguna dan provider tetap harus admin grup.</p><button type="button" onclick="saveGroupPermissions()" class="bg-blue-600 text-white px-4 py-2 rounded mt-3">Simpan Provider & Izin</button>`; document.getElementById('content')?.appendChild(permissions); loadProviderDevices(); loadSystemBotProvider(data.groups || []); }
+    async function loadSystemBotProvider(groups) { const data = await (await apiFetch('/api/system-bot-provider')).json(), providers = data.providers || (data.provider ? [data.provider] : []), content = document.getElementById('content'); if (!providers.some(provider => provider.name === 'TungTung Bot')) providers.unshift({ name: 'TungTung Bot', phone: providers[0]?.phone || '', image: '/image/system-bot-profile.png', connected: false }); if (!providers.some(provider => provider.name === 'TralalaBot')) providers.push({ name: 'TralalaBot', phone: providers[0]?.phone || '', image: '/image/system-bot-profile.png', connected: false }); providers.forEach((provider, index) => { const card = document.createElement('div'); card.className = 'bg-white p-5 rounded-xl shadow mb-6'; card.innerHTML = `<div class="flex items-center gap-3"><img id="system-bot-image-${index}" src="${provider.image || '/image/system-bot-profile.png'}" alt="${provider.name}" onerror="this.src='/image/system-bot-profile.png'" class="w-14 h-14 rounded-full border object-cover"><div><h2 class="font-bold text-lg">${provider.name} <span class="verified-badge" title="Badge provider sistem">&#10003;</span></h2><p class="text-sm text-gray-500">+${provider.phone || '-'} · ${provider.connected ? 'Online' : 'Offline'}</p></div></div><p class="text-sm text-gray-600 mt-3"></p><div class="flex flex-wrap gap-2 mt-3"><select id="system-bot-group-${index}" class="border p-2 rounded flex-1"><option value="">Pilih grup</option>${groups.map(group => `<option value="${group.id}">${group.name}</option>`).join('')}</select><button type="button" onclick="addSystemBotToGroup(${index}, '${provider.phone || ''}')" class="bg-blue-600 text-white px-4 py-2 rounded" ${provider.connected ? '' : 'disabled'}>Tambahkan bot ke group</button></div><p class="text-xs text-gray-500 mt-2">Tombol membutuhkan provider sistem online dan akun Anda sebagai admin grup.</p>`; content?.appendChild(card); }); }
+    async function addSystemBotToGroup(providerIndex = 0, systemBotPhone = '') { const groupId = document.getElementById(`system-bot-group-${providerIndex}`)?.value; if (!groupId) return showPopup('Pilih grup terlebih dahulu', 'error'); const res = await apiFetch('/api/system-bot/add-to-group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId, systemBotPhone }) }); const data = await res.json(); showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function loadProviderDevices() { const select = document.getElementById('bot-provider-device'); if (!select) return; const data = await (await apiFetch('/api/whatsapp-devices')).json(); select.innerHTML = (data.devices || []).map(device => `<option value="${device.deviceId}" ${device.deviceId === botSettings.botProviderDeviceId ? 'selected' : ''}>${device.deviceId} (+${device.number})</option>`).join('') || '<option value="device-1">device-1 belum terhubung</option>'; }
+    async function saveBotAutomation() { const settings = { ...botSettings, scheduleEnabled: document.getElementById('bot-schedule-enabled').checked, scheduleStart: document.getElementById('bot-schedule-start').value, scheduleEnd: document.getElementById('bot-schedule-end').value, newsEnabled: document.getElementById('bot-news-enabled').checked, newsKeywords: document.getElementById('bot-news-keywords').value.split(',').map(value => value.trim()).filter(Boolean), newsGroups: [...document.querySelectorAll('#bot-news-groups input:checked')].map(input => input.value) }; const res = await apiFetch('/api/save-bot-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); botSettings = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function saveGroupPermissions() { const settings = { ...botSettings, botProviderDeviceId: document.getElementById('bot-provider-device').value, allowInvite: document.getElementById('bot-allow-invite').checked, allowKick: document.getElementById('bot-allow-kick').checked }; const res = await apiFetch('/api/save-bot-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); const data = await res.json(); botSettings = data.settings || settings; showPopup(data.message, data.success ? 'success' : 'error'); }
+    async function generateBotToken() { const res = await apiFetch('/api/generate-bot-token', { method: 'POST' }); const data = await res.json(); if (!data.success) return showPopup(data.message || 'Token gagal dibuat', 'error'); botSettings = data.settings || botSettings; const input = document.getElementById('bot-token'); if (input) input.value = data.token; await navigator.clipboard?.writeText(data.token); showPopup('Token bot berhasil dibuat dan disalin'); }
+    async function deleteReply(i) { repliesData.splice(i, 1); await apiFetch('/api/save-replies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ replies: repliesData }) }); showPopup('Balasan dihapus'); loadTab('custom'); }
+    async function sendBug(e) { e.preventDefault(); const subject = document.getElementById('bug-subject').value; const message = document.getElementById('bug-message').value; const res = await apiFetch('/api/bug-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, message }) }); const data = await res.json(); showPopup(data.message, data.success ? 'success' : 'error'); document.getElementById('bug-subject').value = ''; document.getElementById('bug-message').value = ''; }
+    function cekStatusBayar(order_id) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await apiFetch(`/api/billing/check/${order_id}`);
+          const data = await res.json();
+          if (data.status === 'PAID') {
+            clearInterval(interval);
+            showPopup('Pembayaran berhasil! Paket diupgrade');
+            const infoRes = await apiFetch('/api/info'); const info = await infoRes.json();
+            CURRENT_BILLING = { plan: info.plan, sisaHari: info.sisaHari, expired: info.expired };
+            document.getElementById('user-plan').innerText = info.plan;
+            const currentPlanEl = document.getElementById('current-plan'); if (currentPlanEl) currentPlanEl.innerText = info.plan;
+            const currentPlanDashEl = document.getElementById('current-plan-dash'); if (currentPlanDashEl) currentPlanDashEl.innerText = info.plan;
+            loadTab('billing');
+          }
+        } catch (e) { console.error('CHECK STATUS ERROR:', e); }
+      }, 5000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

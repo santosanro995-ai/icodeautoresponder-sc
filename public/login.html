@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - iCodeAutoResponder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .phone-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #0000FF;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .phone-btn:hover {
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .auth-btn {
+      transition: all 0.3s;
+    }
+
+    .auth-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 24px 0;
+      gap: 12px;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+
+    .divider span {
+      color: #9ca3af;
+      font-size: 14px;
+    }
+
+    .icon {
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-600 to-indigo-700 min-h-screen flex items-center justify-center font-sans">
+  <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-800">iCodeAutoResponder</h1>
+      <p class="text-gray-500 text-sm mt-1">Dashboard WhatsApp Auto Reply</p>
+    </div>
+
+    <div class="space-y-3">
+      <!-- Login dengan Nomor Telepon -->
+      <a href="/login-otp" class="phone-btn w-full">
+        <span class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          </svg>
+        </span>
+        <span>Masuk dengan Nomor Telepon</span>
+      </a>
+
+      <!-- Divider -->
+      <div class="divider">
+        <span>atau</span>
+      </div>
+
+      <!-- Login dengan Google -->
+      <a href="/auth/google" class="auth-btn w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition font-semibold">
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+        Lanjut dengan Google
+      </a>
+
+      <!-- Login dengan GitHub -->
+      <a href="/auth/github" class="auth-btn w-full flex items-center justify-center gap-3 bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition font-semibold">
+        <img src="https://www.svgrepo.com/show/512317/github-142.svg" class="w-5 h-5 invert" alt="GitHub">
+        Lanjut dengan GitHub
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+      <p class="text-gray-600 text-xs">
+        Dengan login, Anda setuju dengan
+        <a href="#" class="text-blue-600 hover:underline">Syarat & Ketentuan</a>
+        dan
+        <a href="#" class="text-blue-600 hover:underline">Kebijakan Privasi</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
